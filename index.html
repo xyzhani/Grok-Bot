@@ -105,64 +105,85 @@ function render(D){const st={};document.querySelectorAll("details[data-k]").forE
  <div class="panel"><h2>% return over time</h2><div class="mut">Profit after fees as a % of each bot's starting bank, so bots with different bank sizes compare fairly.</div>${legend(P)}${chart(P)}</div>
  <div class="panel"><h2>Bot details</h2><div class="mut">Click a bot to see its daily totals and every trade.</div>${P.map(b=>details(b,["Time (PKT)","Side","Entry price","Cost","Result","P&L after fees"],["Date (PKT)","Trades","Wins","Losses","Win rate","P&L after fees"])).join("")}</div>`;
  const app=document.getElementById("app");if(!first)app.classList.add("noanim");app.innerHTML=h;
- document.querySelectorAll("details[data-k]").forEach(d=>{if(d.dataset.k in st)d.open=st[d.dataset.k]});if(!first)scrollTo(0,sy);pmMount();animate(first);first=false}
+ document.querySelectorAll("details[data-k]").forEach(d=>{if(d.dataset.k in st)d.open=st[d.dataset.k]});if(!first)scrollTo(0,sy);PM.D=D;pmMount();animate(first);first=false}
 async function load(){try{const r=await fetch("data.json?t="+Date.now(),{cache:"no-store"});render(await r.json())}catch(e){const s=document.querySelector(".sub");if(s)s.textContent="Couldn't load data, retrying in a minute…"}}
 load();setInterval(load,60000);
 
 // ===== Live Polymarket 5-min Up/Down rounds (BTC + SOL). Read-only public data, no keys. =====
-const PM_COINS=[{c:"btc",n:"Bitcoin",s:"BTC",cb:"BTC-USD",col:"#fbbf24"},{c:"sol",n:"Solana",s:"SOL",cb:"SOL-USD",col:"#a78bfa"}];
-const PM={el:null,st:{},timer:null};
-const pmT=sec=>{const d=new Date((sec+5*3600)*1000),h=d.getUTCHours();return`${h%12||12}:${String(d.getUTCMinutes()).padStart(2,"0")}`};
+// Price feed: Polymarket's live Chainlink stream (same price their site shows). Price to beat = Chainlink price at the round's start second.
+const PM_COINS=[{c:"btc",n:"BTC",cb:"BTC-USD",col:"#f7931a",dp:2},{c:"sol",n:"SOL",cb:"SOL-USD",col:"#9945ff",dp:2}];
+const PM={el:null,st:{}};
+const pmClock=sec=>{const d=new Date((sec+5*3600)*1000),h=d.getUTCHours();return`${h%12||12}:${String(d.getUTCMinutes()).padStart(2,"0")}`};
 const pmAP=sec=>new Date((sec+5*3600)*1000).getUTCHours()<12?"AM":"PM";
+const pmSec=sec=>{const d=new Date((sec+5*3600)*1000),h=d.getUTCHours();return`${h%12||12}:${String(d.getUTCMinutes()).padStart(2,"0")}:${String(d.getUTCSeconds()).padStart(2,"0")}`};
 const pmJ=async u=>{const r=await fetch(u,{cache:"no-store"});if(!r.ok)throw new Error(r.status);return r.json()};
+const pmUsd=(v,dp)=>"$"+(+v).toLocaleString("en-US",{minimumFractionDigits:dp,maximumFractionDigits:dp});
 function pmMount(){if(!PM.el)pmInit();const slot=document.getElementById("pmslot");if(slot&&PM.el.parentNode!==slot)slot.appendChild(PM.el)}
 function pmInit(){PM.el=document.createElement("div");PM.el.className="panel pm";PM.el.innerHTML=`<style>
-.pm .pmg{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:12px}
-.pm .pc{position:relative;background:rgba(10,16,32,.75);border:1px solid rgba(148,163,184,.15);border-radius:14px;padding:14px;overflow:hidden}
-.pm .pc .gl{position:absolute;inset:-1px;border-radius:14px;pointer-events:none;animation:glow 3.2s ease-in-out infinite}
-.pm .hd{display:flex;align-items:center;gap:8px}.pm .hd b{font-size:16px}.pm .hd a{margin-left:auto;font-size:12px}
-.pm .win{font-size:12.5px;color:#8b9bb4;margin-top:2px}
-.pm .ud{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-.pm .ud div{border-radius:10px;padding:8px 10px;border:1px solid}.pm .ud .u{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3)}.pm .ud .d{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.3)}
-.pm .ud small{display:block;font-size:11px;color:#8b9bb4;letter-spacing:.5px}.pm .ud span{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
-.pm .tb{height:5px;border-radius:4px;background:rgba(148,163,184,.15);overflow:hidden;margin-top:12px}.pm .tb i{display:block;height:100%;background:linear-gradient(90deg,#22d3ee,#a78bfa);transition:width 1s linear}
-.pm .row{display:flex;justify-content:space-between;font-size:12.5px;color:#8b9bb4;margin-top:6px;font-variant-numeric:tabular-nums}.pm .row b{color:#e6edf7;font-weight:600}
-.pm svg{display:block;width:100%;height:auto;margin-top:10px}
+.pm .pmg{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;margin-top:12px}
+.pm .pc{position:relative;background:#0b0f16;border:1px solid rgba(148,163,184,.15);border-radius:16px;padding:16px;overflow:hidden}
+.pm .pc .gl{position:absolute;inset:-1px;border-radius:16px;pointer-events:none;animation:glow 3.2s ease-in-out infinite}
+.pm .hd{display:flex;align-items:center;gap:12px}
+.pm .ic{width:44px;height:44px;border-radius:11px;background:#000 center/cover;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.pm .tt{flex:1;min-width:0}.pm .tt b{display:block;font-size:17px;line-height:1.2}.pm .tt small{color:#8b9bb4;font-size:13px}
+.pm .cd{display:flex;gap:10px;text-align:center;flex:none}.pm .cd b{display:block;font-size:26px;line-height:1;color:#f87171;font-variant-numeric:tabular-nums;font-weight:700}.pm .cd small{font-size:9.5px;color:#8b9bb4;letter-spacing:.8px}
+.pm .px{display:flex;align-items:flex-end;gap:14px;margin-top:16px;flex-wrap:wrap}.pm .px>div{min-width:0}
+.pm .px>div small{display:block;font-size:12px;color:#8b9bb4;margin-bottom:3px}
+.pm .px .ptb b{font-size:clamp(19px,5.6vw,24px);color:#c9d1dd;font-variant-numeric:tabular-nums}
+.pm .px .sep{width:1px;align-self:stretch;background:rgba(148,163,184,.25)}
+.pm .px .cur small{color:var(--cc)}.pm .px .cur b{font-size:clamp(21px,6.4vw,28px);color:var(--cc);font-variant-numeric:tabular-nums;font-weight:700}
+.pm .df{font-weight:700;font-size:12px;margin-left:6px}
+.pm svg{display:block;width:100%;height:auto;margin-top:8px;overflow:visible}
+.pm .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.pm .btns a{display:block;text-align:center;padding:12px 8px;border-radius:12px;font-weight:600;font-size:16px;color:#fff;text-decoration:none;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+.pm .btns a b{font-size:19px;font-variant-numeric:tabular-nums}
+.pm .btns .u{background:#0a8a3a}.pm .btns .d{background:#d61a1a}
+.pm .sub2{display:flex;justify-content:space-between;font-size:12px;color:#8b9bb4;margin-top:8px;gap:8px;flex-wrap:wrap}
 .pm .hist{display:flex;gap:5px;align-items:center;margin-top:10px;font-size:11.5px;color:#8b9bb4;flex-wrap:wrap}
 .pm .hist i{font-style:normal;font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:5px}
 .pm .hist .U{background:rgba(52,211,153,.15);color:#34d399}.pm .hist .D{background:rgba(248,113,113,.15);color:#f87171}.pm .hist .Q{background:rgba(148,163,184,.12);color:#8b9bb4}
-.pm .flash{animation:fl .6s ease}@keyframes fl{0%{text-shadow:0 0 12px currentColor}100%{text-shadow:none}}
-</style><h2><span class="dot live"></span>Live Polymarket rounds</h2><div class="mut">The real 5-minute BTC and SOL Up/Down markets your bots trade, straight from Polymarket. The chart shows the market's chance of "Up" this round, updating every 2 seconds. Price from Coinbase.</div><div class="pmg">${PM_COINS.map(k=>`<div class="pc" id="pm-${k.c}"><div class="gl" style="box-shadow:0 0 22px ${k.col}44,inset 0 0 0 1px ${k.col}55"></div><div class="mut">Loading ${k.n}…</div></div>`).join("")}</div>`;
- PM_COINS.forEach(k=>PM.st[k.c]={k,round:0,pts:[],up:null,spot:null,spot0:null,hist:[],tok:null,slug:"",busy:false});
- pmTick();PM.timer=setInterval(pmTick,2000);setInterval(pmSpot,3000);pmSpot()}
-async function pmRound(S,t){S.round=t;S.pts=[];S.up=null;S.tok=null;S.spot0=S.spot;S.slug=`${S.k.c}-updown-5m-${t}`;
+</style><h2><span class="dot live"></span>Live Polymarket rounds</h2><div class="mut">The real BTC and SOL 5-minute Up/Down markets your bots trade, live from Polymarket. Price is the same Chainlink feed Polymarket settles on. Up/Down prices are what one share costs right now.</div><div class="pmg">${PM_COINS.map(k=>`<div class="pc" id="pm-${k.c}"><div class="mut">Loading ${k.n}…</div></div>`).join("")}</div>`;
+ PM_COINS.forEach(k=>{const S=PM.st[k.c]={k,round:0,pts:[],ptb:{},cur:null,upAsk:null,dnAsk:null,upTok:null,dnTok:null,slug:"",icon:"",hist:[],busy:false};pmWS(S)});
+ setInterval(pmTick,2000);setInterval(()=>PM_COINS.forEach(k=>pmDraw(PM.st[k.c])),1000);pmTick()}
+function pmWS(S){let ws;try{ws=new WebSocket("wss://ws-live-data.polymarket.com")}catch(e){return setTimeout(()=>pmWS(S),5000)}
+ let ping;ws.onopen=()=>{ws.send(JSON.stringify({action:"subscribe",subscriptions:[{topic:"crypto_prices_chainlink",type:"*",filters:JSON.stringify({symbol:S.k.c+"/usd"})}]}));ping=setInterval(()=>{try{ws.send("PING")}catch(e){}},5000)};
+ ws.onmessage=e=>{let j;try{j=JSON.parse(e.data)}catch(x){return}const p=j&&j.payload;if(!p)return;
+  const add=(ts,v)=>{const t=Math.round(ts/1000);if(!S.pts.length||t>S.pts[S.pts.length-1][0])S.pts.push([t,+v]);if(t%300===0)S.ptb[t]=+v;S.cur=+v};
+  if(Array.isArray(p.data))p.data.forEach(d=>add(d.timestamp,d.value));else if(p.value!=null)add(p.timestamp,p.value);
+  const cut=Date.now()/1000-900;while(S.pts.length&&S.pts[0][0]<cut)S.pts.shift()};
+ ws.onclose=()=>{clearInterval(ping);setTimeout(()=>pmWS(S),3000)};ws.onerror=()=>{try{ws.close()}catch(e){}}}
+async function pmRound(S,t){S.round=t;S.upTok=S.dnTok=null;S.upAsk=S.dnAsk=null;S.slug=`${S.k.c}-updown-5m-${t}`;
  try{const ev=(await pmJ(`https://gamma-api.polymarket.com/events?slug=${S.slug}`))[0],m=ev&&ev.markets&&ev.markets[0];if(!m)throw 0;
-  S.tok=JSON.parse(m.clobTokenIds)[0];S.up=+JSON.parse(m.outcomePrices)[0];
-  try{const h=await pmJ(`https://clob.polymarket.com/prices-history?market=${S.tok}&startTs=${t}&endTs=${t+300}&fidelity=1`);(h.history||[]).forEach(p=>{if(p.t>=t)S.pts.push([p.t,+p.p])})}catch(e){}
- }catch(e){S.round=0}
- pmHist(S,t)}
-async function pmHist(S,t){const out=[];for(let i=1;i<=6;i++){const sl=`${S.k.c}-updown-5m-${t-300*i}`;try{const m=(await pmJ(`https://gamma-api.polymarket.com/events?slug=${sl}`))[0].markets[0],p=JSON.parse(m.outcomePrices).map(Number);out.push({t:t-300*i,r:p[0]>=.99?"U":p[1]>=.99?"D":"Q"})}catch(e){out.push({t:t-300*i,r:"Q"})}}S.hist=out;pmDraw(S)}
-async function pmSpot(){for(const c in PM.st){const S=PM.st[c];try{const j=await pmJ(`https://api.coinbase.com/v2/prices/${S.k.cb}/spot`);S.spot=+j.data.amount;if(S.spot0==null)S.spot0=S.spot}catch(e){}}}
-async function pmTick(){const now=Date.now()/1000,t=Math.floor(now/300)*300;
+  [S.upTok,S.dnTok]=JSON.parse(m.clobTokenIds);S.icon=ev.icon||m.icon||"";const op=JSON.parse(m.outcomePrices).map(Number);S.upAsk=op[0];S.dnAsk=op[1];
+ }catch(e){S.round=0}pmHist(S,t)}
+async function pmHist(S,t){const out=[];for(let i=1;i<=6;i++){const sl=`${S.k.c}-updown-5m-${t-300*i}`;try{const m=(await pmJ(`https://gamma-api.polymarket.com/events?slug=${sl}`))[0].markets[0],p=JSON.parse(m.outcomePrices).map(Number);out.push({t:t-300*i,r:p[0]>=.99?"U":p[1]>=.99?"D":"Q"})}catch(e){out.push({t:t-300*i,r:"Q"})}}S.hist=out}
+const pmAsk=async tok=>{const b=await pmJ(`https://clob.polymarket.com/book?token_id=${tok}`),a=(b.asks||[]).map(o=>+o.price);return a.length?Math.min(...a):null};
+async function pmTick(){const t=Math.floor(Date.now()/1000/300)*300;
  for(const c in PM.st){const S=PM.st[c];if(S.busy)continue;S.busy=true;
-  try{if(S.round!==t)await pmRound(S,t);
-   if(S.tok){const j=await pmJ(`https://clob.polymarket.com/midpoint?token_id=${S.tok}`);const v=+j.mid;if(!isNaN(v)){S.flash=S.up!=null&&Math.round(v*100)!==Math.round(S.up*100);S.up=v;S.pts.push([now,v])}}
-  }catch(e){}S.busy=false;pmDraw(S)}}
-function pmChart(S){const W=600,H=150,L=34,R=8,T=8,B=20,t0=S.round,t1=S.round+300,X=t=>L+(t-t0)/300*(W-L-R),Y=v=>T+(1-v)*(H-T-B);
- let s=`<svg viewBox="0 0 ${W} ${H}">`;[0,.25,.5,.75,1].forEach(v=>{s+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(148,163,184,${v==.5?.35:.1})"${v==.5?' stroke-dasharray="4 4"':""}/><text x="${L-5}" y="${Y(v)+4}" fill="#8b9bb4" font-size="10" text-anchor="end">${v*100}%</text>`});
- [0,1,2,3,4,5].forEach(i=>{s+=`<text x="${X(t0+i*60)}" y="${H-5}" fill="#8b9bb4" font-size="10" text-anchor="${i==0?"start":i==5?"end":"middle"}">${pmT(t0+i*60)}</text>`});
- const P=S.pts.filter(p=>p[0]>=t0&&p[0]<=t1);if(P.length){const c=S.up>=.5?GREEN:RED,d=P.map((p,i)=>(i?"L":"M")+X(p[0]).toFixed(1)+","+Y(p[1]).toFixed(1)).join(" "),l=P[P.length-1];
-  s+=`<defs><linearGradient id="pmg${S.k.c}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".28"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs><path d="${d} L${X(l[0]).toFixed(1)},${Y(0)} L${X(P[0][0]).toFixed(1)},${Y(0)} Z" fill="url(#pmg${S.k.c})"/><path d="${d}" fill="none" stroke="${c}" stroke-width="2.2" style="filter:drop-shadow(0 0 4px ${c})"/><circle cx="${X(l[0])}" cy="${Y(l[1])}" r="4" fill="${c}"><animate attributeName="r" values="3;6;3" dur="1.6s" repeatCount="indefinite"/></circle>`}
+  try{if(S.round!==t)await pmRound(S,t);if(S.upTok){const[u,d]=await Promise.all([pmAsk(S.upTok),pmAsk(S.dnTok)]);if(u!=null)S.upAsk=u;if(d!=null)S.dnAsk=d}}catch(e){}
+  S.busy=false}}
+function pmChart(S,ptb){const W=600,H=190,L=4,R=62,T=10,B=22,now=Date.now()/1000,t1=Math.max(now,S.round+20),t0=S.round,P=S.pts.filter(p=>p[0]>=t0-30);
+ if(P.length<2)return`<div class="mut" style="padding:40px 0;text-align:center">Waiting for live price…</div>`;
+ const ys=P.map(p=>p[1]).concat(ptb!=null?[ptb]:[]);let y0=Math.min(...ys),y1=Math.max(...ys);const pad=(y1-y0)*.15||y1*.0002;y0-=pad;y1+=pad;
+ const tA=Math.min(t0,P[0][0]),X=t=>L+(t-tA)/(t1-tA||1)*(W-L-R),Y=v=>T+(y1-v)/(y1-y0||1)*(H-T-B),dp=S.k.dp,c="#a855f7";
+ let s=`<svg viewBox="0 0 ${W} ${H}">`;for(let k=0;k<=3;k++){const v=y0+k*(y1-y0)/3;s+=`<line x1="${L}" x2="${W-R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="rgba(148,163,184,.1)"/><text x="${W-R+6}" y="${(Y(v)+4).toFixed(1)}" fill="#8b9bb4" font-size="11">${pmUsd(v,dp)}</text>`}
+ [0,.5,1].forEach((k,i)=>{const tt=tA+k*(t1-tA);s+=`<text x="${X(tt).toFixed(1)}" y="${H-5}" fill="#8b9bb4" font-size="10.5" text-anchor="${i==0?"start":i==2?"end":"middle"}">${pmSec(tt)} ${pmAP(tt)}</text>`});
+ if(ptb!=null)s+=`<line x1="${L}" x2="${W-R}" y1="${Y(ptb).toFixed(1)}" y2="${Y(ptb).toFixed(1)}" stroke="#8b9bb4" stroke-dasharray="5 5"/><rect x="${W-R+2}" y="${(Y(ptb)-10).toFixed(1)}" width="${R-2}" height="20" rx="6" fill="#273244"/><text x="${W-R/2+1}" y="${(Y(ptb)+4).toFixed(1)}" fill="#e6edf7" font-size="11" text-anchor="middle">Target</text>`;
+ if(X(t0)>L+2)s+=`<line x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="${T}" y2="${H-B}" stroke="rgba(148,163,184,.25)" stroke-dasharray="2 4"/>`;
+ const d=P.map((p,i)=>(i?"L":"M")+X(p[0]).toFixed(1)+" "+Y(p[1]).toFixed(1)).join(""),l=P[P.length-1];
+ s+=`<defs><linearGradient id="pmg${S.k.c}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${c}" stop-opacity=".22"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
+ <path d="${d}L${X(l[0]).toFixed(1)} ${H-B}L${X(P[0][0]).toFixed(1)} ${H-B}Z" fill="url(#pmg${S.k.c})"/><path d="${d}" fill="none" stroke="${c}" stroke-width="2.4" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px ${c})"/>
+ <line x1="${X(l[0]).toFixed(1)}" x2="${W-R}" y1="${Y(l[1]).toFixed(1)}" y2="${Y(l[1]).toFixed(1)}" stroke="${c}" stroke-dasharray="4 4" opacity=".6"/>
+ <circle cx="${X(l[0]).toFixed(1)}" cy="${Y(l[1]).toFixed(1)}" r="9" fill="none" stroke="${c}" stroke-width="1.5"><animate attributeName="r" values="6;11;6" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;.2;1" dur="1.6s" repeatCount="indefinite"/></circle><circle cx="${X(l[0]).toFixed(1)}" cy="${Y(l[1]).toFixed(1)}" r="4" fill="${c}"/>`;
  return s+"</svg>"}
-function pmDraw(S){const el=document.getElementById(`pm-${S.k.c}`);if(!el)return;const k=S.k,now=Date.now()/1000;
- if(!S.round){el.innerHTML=`<div class="gl" style="box-shadow:0 0 22px ${k.col}44,inset 0 0 0 1px ${k.col}55"></div><b>${k.n}</b><div class="mut" style="margin-top:6px">Waiting for the next round to open on Polymarket…</div>`;return}
- const left=Math.max(0,S.round+300-now),up=S.up==null?null:Math.round(S.up*100),ch=null,dp=k.s=="BTC"?2:3;
- el.innerHTML=`<div class="gl" style="box-shadow:0 0 22px ${k.col}44,inset 0 0 0 1px ${k.col}55"></div>
- <div class="hd"><b style="color:${k.col}">${k.n}</b><span class="tag" style="color:${k.col};border-color:${k.col}88">${k.s} · 5 min</span><a href="https://polymarket.com/event/${S.slug}" target="_blank" rel="noopener">Polymarket ↗</a></div>
- <div class="win">Round ${pmT(S.round)}–${pmT(S.round+300)} ${pmAP(S.round+300)} PKT</div>
- <div class="ud"><div class="u"><small>UP</small><span class="${S.flash?"flash":""}" style="color:${GREEN}">${up==null?"—":up+"%"}</span></div><div class="d"><small>DOWN</small><span class="${S.flash?"flash":""}" style="color:${RED}">${up==null?"—":100-up+"%"}</span></div></div>
- ${pmChart(S)}
- <div class="tb"><i style="width:${(300-left)/3}%"></i></div>
- <div class="row"><span>Time left <b>${Math.floor(left/60)}:${String(Math.floor(left%60)).padStart(2,"0")}</b></span><span>${k.s} <b>${S.spot==null?"—":"$"+S.spot.toLocaleString(undefined,{minimumFractionDigits:dp,maximumFractionDigits:dp})}</b>${ch==null?"":` <span style="color:${ch>=0?GREEN:RED}">${ch>=0?"▲":"▼"}${Math.abs(ch).toFixed(dp)}</span>`}</span></div>
- <div class="hist">Last rounds: ${S.hist.map(h=>`<i class="${h.r}" title="${pmT(h.t)} PKT">${h.r=="U"?"UP":h.r=="D"?"DOWN":"…"}</i>`).join("")||"…"}</div>`}
+function pmDraw(S){const el=document.getElementById(`pm-${S.k.c}`);if(!el)return;const k=S.k,now=Date.now()/1000,gl=`<div class="gl" style="box-shadow:0 0 22px ${k.col}33,inset 0 0 0 1px ${k.col}44"></div>`;
+ if(!S.round){el.innerHTML=gl+`<b>${k.n} Up or Down 5m</b><div class="mut" style="margin-top:6px">Waiting for the next round to open on Polymarket…</div>`;return}
+ const ext=PM.D&&PM.D.priceToBeat&&PM.D.priceToBeat[k.c],left=Math.max(0,S.round+300-now),ptb=S.ptb[S.round]??(ext&&ext[S.round]!=null?+ext[S.round]:null),cur=S.cur,df=cur!=null&&ptb!=null?cur-ptb:null,cc=df==null?"#a855f7":df>=0?GREEN:RED,ct=v=>v==null?"—":Math.round(v*100)+"¢";
+ el.innerHTML=gl+`<div class="hd"><div class="ic" style="background-image:url('${esc(S.icon)}')"></div><div class="tt"><b>${k.n} Up or Down 5m</b><small>${pmClock(S.round)}–${pmClock(S.round+300)} ${pmAP(S.round+300)} PKT</small></div>
+ <div class="cd"><div><b>${String(Math.floor(left/60)).padStart(2,"0")}</b><small>MINS</small></div><div><b>${String(Math.floor(left%60)).padStart(2,"0")}</b><small>SECS</small></div></div></div>
+ <div class="px" style="--cc:${cc}"><div class="ptb"><small>Price To Beat</small><b>${ptb==null?"—":pmUsd(ptb,k.dp)}</b></div><div class="sep"></div><div class="cur"><small>Current Price${df==null?"":`<span class="df" style="color:${df>=0?GREEN:RED}">${df>=0?"▲":"▼"} ${pmUsd(Math.abs(df),k.dp)}</span>`}</small><b>${cur==null?"—":pmUsd(cur,k.dp)}</b></div></div>
+ ${pmChart(S,ptb)}
+ <div class="btns"><a class="u" href="https://polymarket.com/event/${S.slug}" target="_blank" rel="noopener">Up <b>${ct(S.upAsk)}</b></a><a class="d" href="https://polymarket.com/event/${S.slug}" target="_blank" rel="noopener">Down <b>${ct(S.dnAsk)}</b></a></div>
+ <div class="sub2"><span>${ptb==null?"Price to beat shows from the next round (page opened mid-round)":(df>=0?"Up is winning right now":"Down is winning right now")}</span><a href="https://polymarket.com/event/${S.slug}" target="_blank" rel="noopener">Open on Polymarket ↗</a></div>
+ <div class="hist">Last rounds: ${S.hist.map(h=>`<i class="${h.r}" title="${pmClock(h.t)} PKT">${h.r=="U"?"UP":h.r=="D"?"DOWN":"…"}</i>`).join("")||"…"}</div>`}
 </script><style>.noanim .card,.noanim .panel,.noanim .line{animation:none!important;stroke-dashoffset:0}</style></body></html>
