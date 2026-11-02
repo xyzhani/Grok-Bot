@@ -1,39 +1,124 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Degen Live Desk</title><style>
-body{margin:0;background:#0d1117;color:#e6edf3;font:14px/1.4 -apple-system,system-ui,sans-serif}
-header{padding:14px 16px;border-bottom:1px solid #30363d}h1{font-size:18px;margin:0}small,.mut{color:#8b949e}
-nav{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;position:sticky;top:0;background:#0d1117;border-bottom:1px solid #30363d}
-nav button{background:#161b22;color:#e6edf3;border:1px solid #30363d;border-radius:20px;padding:7px 14px;white-space:nowrap}
-nav button.on{background:#238636;border-color:#238636}main{padding:12px;max-width:900px;margin:auto}
-.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px;margin-bottom:12px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.k{font-size:12px;color:#8b949e}.v{font-size:18px;font-weight:600}
-.g{color:#3fb950}.r{color:#f85149}table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;border-bottom:1px solid #21262d;text-align:left}
-.tag{background:#9e6a03;color:#fff;border-radius:4px;padding:1px 6px;font-size:11px;margin-left:6px}.addr{word-break:break-all;font-family:monospace;font-size:12px}
-a{color:#58a6ff}h2{font-size:15px;margin:0 0 8px}.scroll{overflow-x:auto}
-</style></head><body>
-<header><h1>Degen Live Desk</h1><small id="upd">Loading…</small></header>
-<nav id="nav"></nav><main id="main"></main>
+<title>Paper Bots Command Center · Degen Desk</title><style>
+*{box-sizing:border-box}html,body{margin:0;background:#05070f}
+.cc{background:radial-gradient(1200px 600px at 10% -10%,#12234a 0%,#070b17 55%,#05070f 100%);color:#e6edf7;font-family:Inter,system-ui,-apple-system,sans-serif;padding:28px;min-height:100vh}
+.cc h1{font-size:30px;margin:0;letter-spacing:.5px;background:linear-gradient(90deg,#22d3ee,#a78bfa,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cc h3{font-size:20px;margin:30px 0 12px;color:#e6edf7;letter-spacing:.4px}
+.sub{color:#8b9bb4;font-size:14px;margin:6px 0 22px;line-height:1.5}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.card{position:relative;background:rgba(15,23,42,.72);border:1px solid rgba(148,163,184,.15);border-radius:16px;padding:16px;backdrop-filter:blur(6px);animation:rise .6s ease both;transition:transform .25s}
+.card:hover{transform:translateY(-3px)}
+.glow{position:absolute;inset:-1px;border-radius:16px;pointer-events:none;animation:glow 3.2s ease-in-out infinite}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid;letter-spacing:.6px}
+.ptag{font-size:10px;padding:1px 7px;border-radius:999px;background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid #fbbf2488;margin-left:6px;letter-spacing:.6px;font-weight:600}
+.rtag{background:rgba(52,211,153,.15);color:#34d399;border-color:#34d39988}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex:none}
+.live{background:#34d399;animation:pulse 1.6s infinite}
+.big{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums}
+.kv{display:flex;justify-content:space-between;font-size:13px;color:#8b9bb4;margin-top:4px}.kv b{color:#e6edf7;font-weight:600}
+.bar{height:6px;border-radius:4px;background:rgba(248,113,113,.35);overflow:hidden;margin-top:10px}.bar>i{display:block;height:100%;background:#34d399;transition:width 1.2s ease;width:0}
+.panel{margin-top:22px;background:rgba(15,23,42,.6);border:1px solid rgba(148,163,184,.15);border-radius:16px;padding:18px;animation:rise .7s ease both}
+.panel h2{font-size:17px;margin:0 0 4px}
+details.sec{margin-top:12px;background:rgba(15,23,42,.55);border:1px solid rgba(148,163,184,.14);border-radius:14px;padding:4px 16px}
+details.sec>summary{cursor:pointer;padding:12px 0;font-weight:600;list-style:none;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary::before{content:'\25B8';transition:transform .2s;color:#8b9bb4}
+details.sec[open]>summary::before{transform:rotate(90deg)}
+details.inner{margin:8px 0 14px}details.inner>summary{cursor:pointer;color:#8b9bb4;font-size:14px;padding:6px 0}
+.tbl{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+.tbl th{color:#8b9bb4;font-weight:500;text-align:left;padding:7px 8px;border-bottom:1px solid rgba(148,163,184,.2);position:sticky;top:0;background:#0b1224}
+.tbl td{padding:6px 8px;border-bottom:1px solid rgba(148,163,184,.08)}.tbl tr:hover td{background:rgba(34,211,238,.05)}
+.scroll{max-height:420px;overflow:auto}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:#8b9bb4;margin:8px 0}
+.line{stroke-dasharray:3000;stroke-dashoffset:3000;animation:draw 2.2s ease forwards}
+.addr{font-family:ui-monospace,monospace;font-size:12px;word-break:break-all;color:#22d3ee}
+a{color:#22d3ee}.mut{color:#8b9bb4;font-size:13px}
+@media(max-width:600px){.cc{padding:16px}.cc h1{font-size:24px}.big{font-size:24px}.tbl{font-size:12px}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.7)}70%{box-shadow:0 0 0 9px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+@keyframes glow{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes draw{to{stroke-dashoffset:0}}
+</style></head><body><div class="cc" id="app"><h1>Degen Desk · Paper Bots Command Center</h1><div class="sub">Loading…</div></div>
 <script>
-const TABS=[["live","Degen live wallet"],["paper","Degen paper bots"],["poly","$10 To $100 (paper)"]];let tab=location.hash.slice(1)||"live",D=null;
-const $=(n,d=2)=>(n<0?"-$":"$")+Math.abs(+n||0).toFixed(d),cl=n=>n>=0?"g":"r",sg=n=>(n>=0?"+":"")+n,pp=(u,p)=>`<span class="${cl(u)}">${u>=0?"+":"-"}$${Math.abs(u).toFixed(2)} (${sg((+p).toFixed(1))}%)</span>`;
-const px=p=>p<0.01?(+p).toPrecision(4):(+p).toFixed(4),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const kv=(k,v)=>`<div><div class="k">${k}</div><div class="v">${v}</div></div>`;
-function nav(){document.getElementById("nav").innerHTML=TABS.map(([i,n])=>`<button class="${i==tab?"on":""}" onclick="tab='${i}';location.hash='${i}';render()">${n}</button>`).join("")}
-function chart(s){if(!s||s.length<2)return"";const W=600,H=140,xs=s.map(a=>a[0]),ys=s.map(a=>a[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys)||1;
-const pts=s.map(([x,y])=>((x-x0)/(x1-x0||1)*W).toFixed(1)+","+(H-(y-y0)/(y1-y0||1)*(H-10)-5).toFixed(1)).join(" ");
-return`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" style="height:140px"><polyline fill="none" stroke="#3fb950" stroke-width="2" points="${pts}"/></svg><div class="mut">${$(y0)} – ${$(y1)}</div>`}
-function live(L){let h=`<div class="card"><div class="grid">${kv("Equity",$(L.equity))}${kv("P&L vs $20",pp(L.pnl,L.pct))}${kv("SOL",L.sol+" ("+$(L.solValue)+")")}${kv("Realized",pp(L.realized,L.realized/20*100))}${kv("Wins / Losses",L.wins+" / "+L.losses)}${kv("Status",L.halted?'<span class=r>HALTED</span>':'<span class=g>Trading</span>')}</div>
-<p class="mut">Real money. Wallet: <a class="addr" href="https://solscan.io/account/${L.address}" target="_blank">${L.address}</a><br>Price watcher tick: ${esc(L.watcherTick)} · SOL balance read: ${esc(L.balanceTime)}</p></div>`;
-h+=`<div class="card"><h2>Open positions (${L.open.length})</h2><div class="scroll"><table><tr><th>Token</th><th>Cost</th><th>Entry → Now</th><th>Unrealized</th><th>Stop</th></tr>${L.open.map(p=>`<tr><td><a href="https://dexscreener.com/solana/${p.mint}" target="_blank">${esc(p.token)}</a>${p.halfSold?'<br><small class=mut>half sold</small>':''}</td><td>${$(p.cost)}</td><td>${px(p.entry)} → ${px(p.last)}</td><td>${pp(p.pnl,p.pct)}</td><td>${px(p.stop)}${p.tp?'<br><small class=mut>½ at '+px(p.tp)+'</small>':''}</td></tr>`).join("")||'<tr><td colspan=5 class=mut>None</td></tr>'}</table></div></div>`;
-h+=`<div class="card"><h2>Equity</h2>${chart(L.equitySeries)}</div>`;
-h+=`<div class="card"><h2>Closed trades (${L.closed.length})</h2><div class="scroll"><table><tr><th>Time</th><th>Token</th><th>Sold</th><th>Realized</th><th>Reason</th></tr>${L.closed.map(c=>`<tr><td>${esc(c.time.replace(" PKT",""))}</td><td><a href="https://solscan.io/tx/${c.sig}" target="_blank">${esc(c.token)}</a></td><td>${$(c.proceeds)}</td><td>${pp(c.pnl,c.pct)}</td><td class=mut>${esc(c.reason)}</td></tr>`).join("")}</table></div></div>`;return h}
-function paper(P){const b=(t,o,start,eqK,pnlK)=>{if(!o)return`<div class=card><h2>${t}<span class=tag>PAPER</span></h2><p class=mut>No data</p></div>`;const pnl=+o[pnlK]||0;
-return`<div class="card"><h2>${t}<span class=tag>PAPER · no real money</span></h2><div class="grid">${kv("Balance",$(o[eqK]))}${kv("P&L vs $"+start,pp(pnl,pnl/start*100))}${kv("Trades",o.trades)}${kv("Win rate",o.winRate==null?"—":o.winRate+"%")}</div>${(o.recent||[]).length?`<div class=scroll><table><tr><th>Recent</th></tr>${o.recent.slice(0,10).map(r=>`<tr><td class=mut>${esc(typeof r=="string"?r:JSON.stringify(r))}</td></tr>`).join("")}</table></div>`:""}</div>`};
-return b("Sniper",P.sniper,20,"balance","pnl")+b("Meme swing",P.memeswing,20,"equityUsd","pnlUsd")}
-function poly(B){if(!B)return"<p class=mut>No data</p>";return`<p class=mut>All five are PAPER bots trading Polymarket 5-min Up/Down. No real money.</p>`+B.map(b=>`<div class="card"><h2>${esc(b.name)}<span class=tag>PAPER</span></h2><p class=mut>${esc(b.desc)} · ${esc(b.status)}</p><div class="grid">${kv("Cash",esc(b.cash))}${kv("P&L",pp(b.pnlNum,b.pnlNum/b.start*100))}${kv("Record",esc(b.record))}${kv("Open",esc(b.open))}</div>
-${b.series&&b.series.length>1?chart(b.series.map((y,i)=>[i,Array.isArray(y)?y[1]:y])):""}${(b.bets||[]).length?`<div class=scroll><table>${b.bets.slice(0,15).map(r=>`<tr>${(Array.isArray(r)?r:Object.values(r)).map(c=>`<td class="${c&&c.tone=="danger"?"r":c&&c.tone=="success"?"g":""}">${esc(c&&c.text!=null?c.text:c)}</td>`).join("")}</tr>`).join("")}</table></div>`:""}</div>`).join("")}
-function render(){nav();if(!D)return;document.getElementById("upd").textContent="Last updated "+D.updated+" · auto-refreshes every 60s";
-document.getElementById("main").innerHTML=tab=="paper"?paper(D.paper||{}):tab=="poly"?poly(D.poly):live(D.live)}
-async function load(){try{D=await (await fetch("data.json?t="+Date.now(),{cache:"no-store"})).json();render()}catch(e){document.getElementById("upd").textContent="Couldn't load data, retrying…"}}
+const COLORS={A:"#22d3ee",B:"#a78bfa",C:"#f472b6",D:"#34d399",E:"#fbbf24",L:"#22d3ee",S:"#f472b6",M:"#a78bfa"},GREEN="#34d399",RED="#f87171",MUTED="#8b9bb4";
+const OLD = [
+  ["04:55", "DOWN", "30¢", "UP won", { text: "-$15.73", tone: "danger" }],
+  ["04:50", "DOWN", "10¢", "UP won", { text: "-$15.95", tone: "danger" }],
+  ["04:45", "DOWN", "22¢", "UP won", { text: "-$15.82", tone: "danger" }],
+  ["04:40", "UP", "34¢", "DOWN won", { text: "-$15.69", tone: "danger" }],
+  ["04:35", "UP", "67¢", "UP won", { text: "+$7.04", tone: "success" }],
+  ["04:30", "UP", "62¢", "UP won", { text: "+$8.79", tone: "success" }],
+  ["04:25", "UP", "22¢", "DOWN won", { text: "-$15.82", tone: "danger" }],
+  ["04:25", "DOWN", "60¢", "DOWN won", { text: "+$9.58", tone: "success" }],
+  ["04:15", "UP", "45¢", "UP won", { text: "+$17.76", tone: "success" }],
+  ["04:15", "DOWN", "31¢", "UP won", { text: "-$15.72", tone: "danger" }],
+];
+
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const txt=c=>c&&typeof c==="object"?c.text:c,col=c=>c&&typeof c==="object"?(c.tone==="success"?GREEN:c.tone==="danger"?RED:""):"";
+const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function pktFull(ms){const d=new Date(ms+5*3600e3),h=d.getUTCHours();return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}, ${h%12||12}:${String(d.getUTCMinutes()).padStart(2,"0")} ${h<12?"AM":"PM"}`}
+function pktH(ts){const d=new Date((ts+5*3600)*1000),h=d.getUTCHours();return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}, ${h%12||12} ${h<12?"AM":"PM"}`}
+const cnt=(v,{prefix="$",dec=2,signed=false}={})=>`<span class="cnt" data-v="${v}" data-p="${prefix}" data-d="${dec}" data-s="${signed?1:0}">${(signed?(v>=0?"+":"-"):"")+prefix+Math.abs(v).toFixed(dec)}</span>`;
+function animate(first){document.querySelectorAll(".cnt").forEach(el=>{const v=+el.dataset.v,p=el.dataset.p,d=+el.dataset.d,s=el.dataset.s==="1",from=first?0:+(el.dataset.from||v),t0=performance.now();
+ const step=t=>{const k=Math.min(1,(t-t0)/1200),x=from+(v-from)*(1-Math.pow(1-k,3));el.textContent=(s?(x>=0?"+":"-"):"")+p+Math.abs(x).toFixed(d);if(k<1)requestAnimationFrame(step)};requestAnimationFrame(step)});
+ setTimeout(()=>document.querySelectorAll(".bar>i").forEach(i=>i.style.width=i.dataset.w+"%"),50)}
+function tbl(cols,rows,empty){if(!rows||!rows.length)return`<div class="mut" style="padding:6px 0">${empty||"No trades yet. It waits for a round with enough edge."}</div>`;
+ return`<div class="scroll"><table class="tbl"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td style="color:${col(c)}">${esc(txt(c))}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`}
+function card(b,i,unit){const c=COLORS[b.id]||"#22d3ee",n=b.wins+b.losses,wr=n?100*b.wins/n:0,up=b.pnlNum>=0,run=b.status==="running";
+ const lab=b.paper===false?`<span class="ptag rtag">REAL</span>`:`<span class="ptag">PAPER</span>`;
+ return`<div class="card" style="animation-delay:${i*.08}s"><div class="glow" style="box-shadow:0 0 22px ${c}55,inset 0 0 0 1px ${c}66"></div>
+ <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:20px;font-weight:800;color:${c}">${esc(b.short||("Bot "+b.id))}${lab}</div><span class="tag" style="color:${c};border-color:${c}88">${esc(b.coin)}</span></div>
+ <div style="font-size:13px;color:#c7d2e4;margin:6px 0 10px;min-height:34px">${esc(b.desc)}</div>
+ <div class="big" style="color:${up?GREEN:RED}">${cnt(b.pnlNum,{signed:true})}</div>
+ <div style="font-size:12px;color:${MUTED}">profit/loss · ${up?"+":""}${(100*b.pnlNum/b.start).toFixed(1)}% of bank</div>
+ <div class="kv"><span>${unit||"Cash now"}</span><b>${cnt(b.cashNum)} <span style="color:${MUTED};font-weight:400">of $${b.start}</span></b></div>
+ <div class="kv"><span>Wins · Losses</span><b><span style="color:${GREEN}">${b.wins}</span> · <span style="color:${RED}">${b.losses}</span></b></div>
+ <div class="kv"><span>Win rate</span><b>${n?wr.toFixed(0)+"%":"—"}</b></div>
+ <div class="bar"><i data-w="${n?wr:0}"></i></div>
+ <div style="margin-top:12px;font-size:13px;display:flex;align-items:center;color:${run?GREEN:RED}"><span class="dot${run?" live":""}" style="background:${run?GREEN:RED}"></span>${run?"Running":"Stopped"}<span style="color:${MUTED};margin-left:auto">${esc(b.open)}</span></div></div>`}
+function chart(BOTS){const W=900,H=300,P=44,all=BOTS.flatMap(b=>b.series);if(!all.length)return`<div class="mut">No settled trades yet.</div>`;
+ const now=Date.now()/1000,t0=Math.min(...all.map(p=>p[0])),t1=Math.max(now,...all.map(p=>p[0])),ys=all.map(p=>p[1]).concat([0]),y0=Math.min(...ys),y1=Math.max(...ys),pad=(y1-y0)*.08||5;
+ const X=t=>P+(t-t0)/(t1-t0||1)*(W-P-12),Y=v=>12+(y1+pad-v)/(y1-y0+2*pad)*(H-40);let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">`;
+ [0,.25,.5,.75,1].forEach(k=>{const v=y0-pad+k*(y1-y0+2*pad);s+=`<line x1="${P}" x2="${W-12}" y1="${Y(v)}" y2="${Y(v)}" stroke="rgba(148,163,184,.12)"/><text x="${P-6}" y="${Y(v)+4}" fill="${MUTED}" font-size="11" text-anchor="end">${v.toFixed(0)}%</text>`});
+ s+=`<line x1="${P}" x2="${W-12}" y1="${Y(0)}" y2="${Y(0)}" stroke="rgba(226,232,240,.35)" stroke-dasharray="4 4"/>`;
+ [0,.25,.5,.75,1].forEach((k,i)=>{s+=`<text x="${X(t0+k*(t1-t0))}" y="${H-8}" fill="${MUTED}" font-size="11" text-anchor="${i==0?"start":i==4?"end":"middle"}">${pktH(t0+k*(t1-t0))}</text>`});
+ BOTS.filter(b=>b.series.length).forEach(b=>{const pts=b.series.concat([[now,b.series[b.series.length-1][1]]]),c=COLORS[b.id],l=pts[pts.length-1];
+  s+=`<path class="line" d="${pts.map((p,i)=>(i?"L":"M")+X(p[0]).toFixed(1)+","+Y(p[1]).toFixed(1)).join(" ")}" fill="none" stroke="${c}" stroke-width="2.2" style="filter:drop-shadow(0 0 4px ${c})"/><circle cx="${X(l[0])}" cy="${Y(l[1])}" r="4" fill="${c}"><animate attributeName="r" values="3;6;3" dur="1.6s" repeatCount="indefinite"/></circle>`});
+ return s+"</svg>"}
+function legend(BOTS){return`<div class="legend">${BOTS.map(b=>`<span><span class="dot" style="background:${COLORS[b.id]}"></span>${esc(b.short||"Bot "+b.id)} (${esc(b.coin)}) ${b.series.length?`${b.pnlNum>=0?"+":""}${(100*b.pnlNum/b.start).toFixed(1)}%`:"no trades yet"}</span>`).join("")}</div>`}
+function details(b,cols,dcols,open){return`<details class="sec" data-k="${b.id}"${open?" open":""}><summary><span class="dot" style="background:${COLORS[b.id]}"></span>${esc(b.name)}<span style="margin-left:auto;color:${b.pnlNum>=0?GREEN:RED}">${esc(b.pnl)}</span><span style="color:${MUTED};font-weight:400">${esc(b.record)}</span></summary>
+ <div class="mut" style="margin-bottom:6px">${esc(b.rule)} Cash ${esc(b.cash)} of $${b.start}, ${esc(b.open)}.</div>
+ <details class="inner" data-k="${b.id}d" open><summary>Daily totals (PKT days)</summary>${tbl(dcols,b.daily)}</details>
+ <details class="inner" data-k="${b.id}t"><summary>Full trade log (${b.bets.length} trades, newest first)</summary>${tbl(cols,b.bets)}</details></details>`}
+const px=p=>p<0.01?(+p).toPrecision(4):(+p).toFixed(4);
+let first=true;
+function render(D){const st={};document.querySelectorAll("details[data-k]").forEach(d=>st[d.dataset.k]=d.open);const sy=scrollY;
+ const P=D.poly||[],G=D.degen||[],L=D.live,Lb=G.find(b=>b.id==="L"),PB=G.filter(b=>b.id!=="L");
+ if(Lb)Lb.short="Live wallet";PB.forEach(b=>b.short=b.id==="S"?"Sniper":"Meme swing");
+ const live=P.filter(b=>b.status==="running").length+G.filter(b=>b.status==="running").length,tot=P.reduce((s,b)=>s+b.wins+b.losses,0);
+ let h=`<h1>Degen Desk · Paper Bots Command Center</h1><div class="sub"><span class="dot live"></span>${live} of ${P.length+G.length} bots live · Snapshot as of ${pktFull(D.updatedTs)} PKT, refreshes every minute<br>The Degen live wallet trades real money. Everything marked PAPER is paper money only, no real trades. All times are Pakistan time (PKT).</div>`;
+ // Degen live
+ h+=`<h3>Degen live wallet <span class="ptag rtag">REAL MONEY</span></h3><div class="grid">${card(Lb,0,"Equity now")}
+ <div class="card" style="animation-delay:.08s;grid-column:span 2;min-width:0"><div class="glow" style="box-shadow:0 0 22px #22d3ee33,inset 0 0 0 1px #22d3ee44"></div><div style="font-weight:700;margin-bottom:6px">Open positions (${L.open.length})</div>
+ ${tbl(["Token","Cost","Entry → now","Unrealized","Stop"],L.open.map(p=>[p.token+(p.halfSold?" (half sold)":""),"$"+p.cost.toFixed(2),px(p.entry)+" → "+px(p.last),{text:(p.pnl>=0?"+$":"-$")+Math.abs(p.pnl).toFixed(2)+" ("+(p.pct>=0?"+":"")+p.pct+"%)",tone:p.pnl>=0?"success":"danger"},px(p.stop)+(p.tp?" · ½ at "+px(p.tp):"")]),"No open positions. Waiting for a coin that passes every rule.")}
+ <div class="kv"><span>SOL</span><b>${L.sol} SOL (${cnt(L.solValue)})</b></div><div class="kv"><span>Realized P&L</span><b style="color:${L.realized>=0?GREEN:RED}">${cnt(L.realized,{signed:true})}</b></div>
+ <div class="mut" style="margin-top:8px">Wallet <a class="addr" href="https://solscan.io/account/${esc(L.address)}" target="_blank">${esc(L.address)}</a><br>Stops checked every minute (last ${esc(L.watcherTick||"—")})</div></div></div>
+ <div class="panel"><h2>Live wallet % return over time</h2><div class="mut">Equity vs the $20 start.</div>${legend([Lb])}${chart([Lb])}</div>
+ <div class="panel"><h2>Live wallet details</h2><div class="mut">Daily totals and every closed trade, with $ and % P&L.</div>${details(Lb,["Time (PKT)","Token","Cost","Sold for","Reason","P&L"],["Date (PKT)","Trades","Wins","Losses","Win rate","P&L"],true)}</div>`;
+ // Degen paper
+ h+=`<h3>Degen paper bots <span class="ptag">PAPER</span></h3><div class="grid">${PB.map((b,i)=>card(b,i)).join("")}</div>
+ <div class="panel"><h2>% return over time</h2><div class="mut">Paper profit as a % of each bot's $20 bank.</div>${legend(PB)}${chart(PB)}</div>
+ <div class="panel"><h2>Bot details</h2><div class="mut">Click a bot to see its daily totals and every trade.</div>${PB.map(b=>details(b,["Time (PKT)","Token","Size","Hold","Exit","P&L"],["Date (PKT)","Trades","Wins","Losses","Win rate","P&L"])).join("")}</div>`;
+ // Polymarket
+ h+=`<h3>$10 To $100 · Polymarket 5-min bots <span class="ptag">PAPER</span></h3><div class="sub" style="margin:0 0 14px">${P.filter(b=>b.status==="running").length} of ${P.length} bots live · ${tot} settled paper trades. Each bot bets on whether BTC or Solana ends each 5-minute Polymarket round up or down.</div>
+ <div class="grid">${P.map((b,i)=>card(b,i)).join("")}</div>
+ <div class="panel"><h2>% return over time</h2><div class="mut">Profit after fees as a % of each bot's starting bank, so bots with different bank sizes compare fairly.</div>${legend(P)}${chart(P)}</div>
+ <div class="panel"><h2>Bot details</h2><div class="mut">Click a bot to see its daily totals and every trade.</div>${P.map(b=>details(b,["Time (PKT)","Side","Entry price","Cost","Result","P&L after fees"],["Date (PKT)","Trades","Wins","Losses","Win rate","P&L after fees"])).join("")}</div>
+ <details class="sec" data-k="old" style="margin-top:22px"><summary>Archive: old $100 run (ended 5:12 AM PKT, 1 Nov) <span style="margin-left:auto;color:${RED}">-$51.56</span><span style="color:${MUTED};font-weight:400">4 W · 6 L</span></summary>
+ <div class="mut" style="margin-bottom:8px">$15 bets on BTC. Cash left $48.44 of $100 after $6.48 fees. Favourites (45¢+) went 4 of 4 (+$43.17); cheap sides under 45¢ went 0 of 6 (-$94.74).</div>${tbl(["Round (PKT)","Bet","Price","Outcome","Result"],OLD)}</details>`;
+ const app=document.getElementById("app");if(!first)app.classList.add("noanim");app.innerHTML=h;
+ document.querySelectorAll("details[data-k]").forEach(d=>{if(d.dataset.k in st)d.open=st[d.dataset.k]});if(!first)scrollTo(0,sy);animate(first);first=false}
+async function load(){try{const r=await fetch("data.json?t="+Date.now(),{cache:"no-store"});render(await r.json())}catch(e){const s=document.querySelector(".sub");if(s)s.textContent="Couldn't load data, retrying in a minute…"}}
 load();setInterval(load,60000);
-</script></body></html>
+</script><style>.noanim .card,.noanim .panel,.noanim .line{animation:none!important;stroke-dashoffset:0}</style></body></html>
