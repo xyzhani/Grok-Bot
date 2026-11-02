@@ -1,0 +1,39 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Degen Live Desk</title><style>
+body{margin:0;background:#0d1117;color:#e6edf3;font:14px/1.4 -apple-system,system-ui,sans-serif}
+header{padding:14px 16px;border-bottom:1px solid #30363d}h1{font-size:18px;margin:0}small,.mut{color:#8b949e}
+nav{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;position:sticky;top:0;background:#0d1117;border-bottom:1px solid #30363d}
+nav button{background:#161b22;color:#e6edf3;border:1px solid #30363d;border-radius:20px;padding:7px 14px;white-space:nowrap}
+nav button.on{background:#238636;border-color:#238636}main{padding:12px;max-width:900px;margin:auto}
+.card{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:12px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.k{font-size:12px;color:#8b949e}.v{font-size:18px;font-weight:600}
+.g{color:#3fb950}.r{color:#f85149}table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:6px 4px;border-bottom:1px solid #21262d;text-align:left}
+.tag{background:#9e6a03;color:#fff;border-radius:4px;padding:1px 6px;font-size:11px;margin-left:6px}.addr{word-break:break-all;font-family:monospace;font-size:12px}
+a{color:#58a6ff}h2{font-size:15px;margin:0 0 8px}.scroll{overflow-x:auto}
+</style></head><body>
+<header><h1>Degen Live Desk</h1><small id="upd">Loading…</small></header>
+<nav id="nav"></nav><main id="main"></main>
+<script>
+const TABS=[["live","Degen live wallet"],["paper","Degen paper bots"],["poly","$10 To $100 (paper)"]];let tab=location.hash.slice(1)||"live",D=null;
+const $=(n,d=2)=>(n<0?"-$":"$")+Math.abs(+n||0).toFixed(d),cl=n=>n>=0?"g":"r",sg=n=>(n>=0?"+":"")+n,pp=(u,p)=>`<span class="${cl(u)}">${u>=0?"+":"-"}$${Math.abs(u).toFixed(2)} (${sg((+p).toFixed(1))}%)</span>`;
+const px=p=>p<0.01?(+p).toPrecision(4):(+p).toFixed(4),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const kv=(k,v)=>`<div><div class="k">${k}</div><div class="v">${v}</div></div>`;
+function nav(){document.getElementById("nav").innerHTML=TABS.map(([i,n])=>`<button class="${i==tab?"on":""}" onclick="tab='${i}';location.hash='${i}';render()">${n}</button>`).join("")}
+function chart(s){if(!s||s.length<2)return"";const W=600,H=140,xs=s.map(a=>a[0]),ys=s.map(a=>a[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys)||1;
+const pts=s.map(([x,y])=>((x-x0)/(x1-x0||1)*W).toFixed(1)+","+(H-(y-y0)/(y1-y0||1)*(H-10)-5).toFixed(1)).join(" ");
+return`<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="none" style="height:140px"><polyline fill="none" stroke="#3fb950" stroke-width="2" points="${pts}"/></svg><div class="mut">${$(y0)} – ${$(y1)}</div>`}
+function live(L){let h=`<div class="card"><div class="grid">${kv("Equity",$(L.equity))}${kv("P&L vs $20",pp(L.pnl,L.pct))}${kv("SOL",L.sol+" ("+$(L.solValue)+")")}${kv("Realized",pp(L.realized,L.realized/20*100))}${kv("Wins / Losses",L.wins+" / "+L.losses)}${kv("Status",L.halted?'<span class=r>HALTED</span>':'<span class=g>Trading</span>')}</div>
+<p class="mut">Real money. Wallet: <a class="addr" href="https://solscan.io/account/${L.address}" target="_blank">${L.address}</a><br>Price watcher tick: ${esc(L.watcherTick)} · SOL balance read: ${esc(L.balanceTime)}</p></div>`;
+h+=`<div class="card"><h2>Open positions (${L.open.length})</h2><div class="scroll"><table><tr><th>Token</th><th>Cost</th><th>Entry → Now</th><th>Unrealized</th><th>Stop</th></tr>${L.open.map(p=>`<tr><td><a href="https://dexscreener.com/solana/${p.mint}" target="_blank">${esc(p.token)}</a>${p.halfSold?'<br><small class=mut>half sold</small>':''}</td><td>${$(p.cost)}</td><td>${px(p.entry)} → ${px(p.last)}</td><td>${pp(p.pnl,p.pct)}</td><td>${px(p.stop)}${p.tp?'<br><small class=mut>½ at '+px(p.tp)+'</small>':''}</td></tr>`).join("")||'<tr><td colspan=5 class=mut>None</td></tr>'}</table></div></div>`;
+h+=`<div class="card"><h2>Equity</h2>${chart(L.equitySeries)}</div>`;
+h+=`<div class="card"><h2>Closed trades (${L.closed.length})</h2><div class="scroll"><table><tr><th>Time</th><th>Token</th><th>Sold</th><th>Realized</th><th>Reason</th></tr>${L.closed.map(c=>`<tr><td>${esc(c.time.replace(" PKT",""))}</td><td><a href="https://solscan.io/tx/${c.sig}" target="_blank">${esc(c.token)}</a></td><td>${$(c.proceeds)}</td><td>${pp(c.pnl,c.pct)}</td><td class=mut>${esc(c.reason)}</td></tr>`).join("")}</table></div></div>`;return h}
+function paper(P){const b=(t,o,start,eqK,pnlK)=>{if(!o)return`<div class=card><h2>${t}<span class=tag>PAPER</span></h2><p class=mut>No data</p></div>`;const pnl=+o[pnlK]||0;
+return`<div class="card"><h2>${t}<span class=tag>PAPER · no real money</span></h2><div class="grid">${kv("Balance",$(o[eqK]))}${kv("P&L vs $"+start,pp(pnl,pnl/start*100))}${kv("Trades",o.trades)}${kv("Win rate",o.winRate==null?"—":o.winRate+"%")}</div>${(o.recent||[]).length?`<div class=scroll><table><tr><th>Recent</th></tr>${o.recent.slice(0,10).map(r=>`<tr><td class=mut>${esc(typeof r=="string"?r:JSON.stringify(r))}</td></tr>`).join("")}</table></div>`:""}</div>`};
+return b("Sniper",P.sniper,20,"balance","pnl")+b("Meme swing",P.memeswing,20,"equityUsd","pnlUsd")}
+function poly(B){if(!B)return"<p class=mut>No data</p>";return`<p class=mut>All five are PAPER bots trading Polymarket 5-min Up/Down. No real money.</p>`+B.map(b=>`<div class="card"><h2>${esc(b.name)}<span class=tag>PAPER</span></h2><p class=mut>${esc(b.desc)} · ${esc(b.status)}</p><div class="grid">${kv("Cash",esc(b.cash))}${kv("P&L",pp(b.pnlNum,b.pnlNum/b.start*100))}${kv("Record",esc(b.record))}${kv("Open",esc(b.open))}</div>
+${b.series&&b.series.length>1?chart(b.series.map((y,i)=>[i,Array.isArray(y)?y[1]:y])):""}${(b.bets||[]).length?`<div class=scroll><table>${b.bets.slice(0,15).map(r=>`<tr>${(Array.isArray(r)?r:Object.values(r)).map(c=>`<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</table></div>`:""}</div>`).join("")}
+function render(){nav();if(!D)return;document.getElementById("upd").textContent="Last updated "+D.updated+" · auto-refreshes every 60s";
+document.getElementById("main").innerHTML=tab=="paper"?paper(D.paper||{}):tab=="poly"?poly(D.poly):live(D.live)}
+async function load(){try{D=await (await fetch("data.json?t="+Date.now(),{cache:"no-store"})).json();render()}catch(e){document.getElementById("upd").textContent="Couldn't load data, retrying…"}}
+load();setInterval(load,60000);
+</script></body></html>
