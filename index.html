@@ -33,7 +33,7 @@ details.inner{margin:8px 0 14px}details.inner>summary{cursor:pointer;color:#8b9b
 .line{stroke-dasharray:3000;stroke-dashoffset:3000;animation:draw 2.2s ease forwards}
 .addr{font-family:ui-monospace,monospace;font-size:12px;word-break:break-all;color:#22d3ee}
 a{color:#22d3ee}.mut{color:#8b9bb4;font-size:13px}
-@media(max-width:600px){.cc{padding:16px}.cc h1{font-size:24px}.big{font-size:24px}.tbl{font-size:12px}}
+@media(max-width:600px){.span2{grid-column:auto!important}.cc{padding:16px}.cc h1{font-size:24px}.big{font-size:24px}.tbl{font-size:12px}}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(52,211,153,.7)}70%{box-shadow:0 0 0 9px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
 @keyframes glow{0%,100%{opacity:.35}50%{opacity:1}}
@@ -100,7 +100,7 @@ function render(D){const st={};document.querySelectorAll("details[data-k]").forE
  let h=`<h1>Degen Desk · Paper Bots Command Center</h1><div class="sub"><span class="dot live"></span>${live} of ${P.length+G.length} bots live · Snapshot as of ${pktFull(D.updatedTs)} PKT, refreshes every minute<br>The Degen live wallet trades real money. Everything marked PAPER is paper money only, no real trades. All times are Pakistan time (PKT).</div>`;
  // Degen live
  h+=`<h3>Degen live wallet <span class="ptag rtag">REAL MONEY</span></h3><div class="grid">${card(Lb,0,"Equity now")}
- <div class="card" style="animation-delay:.08s;grid-column:span 2;min-width:0"><div class="glow" style="box-shadow:0 0 22px #22d3ee33,inset 0 0 0 1px #22d3ee44"></div><div style="font-weight:700;margin-bottom:6px">Open positions (${L.open.length})</div>
+ <div class="card span2" style="animation-delay:.08s;grid-column:span 2;min-width:0"><div class="glow" style="box-shadow:0 0 22px #22d3ee33,inset 0 0 0 1px #22d3ee44"></div><div style="font-weight:700;margin-bottom:6px">Open positions (${L.open.length})</div>
  ${tbl(["Token","Cost","Entry → now","Unrealized","Stop"],L.open.map(p=>[p.token+(p.halfSold?" (half sold)":""),"$"+p.cost.toFixed(2),px(p.entry)+" → "+px(p.last),{text:(p.pnl>=0?"+$":"-$")+Math.abs(p.pnl).toFixed(2)+" ("+(p.pct>=0?"+":"")+p.pct+"%)",tone:p.pnl>=0?"success":"danger"},px(p.stop)+(p.tp?" · ½ at "+px(p.tp):"")]),"No open positions. Waiting for a coin that passes every rule.")}
  <div class="kv"><span>SOL</span><b>${L.sol} SOL (${cnt(L.solValue)})</b></div><div class="kv"><span>Realized P&L</span><b style="color:${L.realized>=0?GREEN:RED}">${cnt(L.realized,{signed:true})}</b></div>
  <div class="mut" style="margin-top:8px">Wallet <a class="addr" href="https://solscan.io/account/${esc(L.address)}" target="_blank">${esc(L.address)}</a><br>Stops checked every minute (last ${esc(L.watcherTick||"—")})</div></div></div>
