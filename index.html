@@ -153,7 +153,7 @@ function pmInit(){PM.el=document.createElement("style");PM.cards={};PM.el.textCo
 function pmWS(S){let ws;try{ws=new WebSocket("wss://ws-live-data.polymarket.com")}catch(e){return setTimeout(()=>pmWS(S),5000)}
  let ping;ws.onopen=()=>{ws.send(JSON.stringify({action:"subscribe",subscriptions:[{topic:"crypto_prices_chainlink",type:"*",filters:JSON.stringify({symbol:S.k.c+"/usd"})}]}));ping=setInterval(()=>{try{ws.send("PING")}catch(e){}},5000)};
  ws.onmessage=e=>{let j;try{j=JSON.parse(e.data)}catch(x){return}const p=j&&j.payload;if(!p)return;
-  const add=(ts,v)=>{const t=Math.round(ts/1000);if(!S.pts.length||t>S.pts[S.pts.length-1][0])S.pts.push([t,+v]);if(t%300===0)S.ptb[t]=+v;S.cur=+v};
+  const add=(ts,v)=>{const t=Math.round(ts/1000);if(!S.pts.length||t>S.pts[S.pts.length-1][0])S.pts.push([t,+v]);S.cur=+v};
   if(Array.isArray(p.data))p.data.forEach(d=>add(d.timestamp,d.value));else if(p.value!=null)add(p.timestamp,p.value);
   const cut=Date.now()/1000-900;while(S.pts.length&&S.pts[0][0]<cut)S.pts.shift()};
  ws.onclose=()=>{clearInterval(ping);setTimeout(()=>pmWS(S),3000)};ws.onerror=()=>{try{ws.close()}catch(e){}}}
@@ -162,6 +162,12 @@ async function pmRound(S,t){S.round=t;S.upTok=S.dnTok=null;S.upAsk=S.dnAsk=null;
   [S.upTok,S.dnTok]=JSON.parse(m.clobTokenIds);S.icon=ev.icon||m.icon||"";const op=JSON.parse(m.outcomePrices).map(Number);S.upAsk=op[0];S.dnAsk=op[1];
  }catch(e){S.round=0}pmHist(S,t)}
 async function pmHist(S,t){const out=[];for(let i=1;i<=6;i++){const sl=`${S.k.c}-updown-5m-${t-300*i}`;try{const m=(await pmJ(`https://gamma-api.polymarket.com/events?slug=${sl}`))[0].markets[0],p=JSON.parse(m.outcomePrices).map(Number);out.push({t:t-300*i,r:p[0]>=.99?"U":p[1]>=.99?"D":"Q"})}catch(e){out.push({t:t-300*i,r:"Q"})}}S.hist=out}
+// Price to beat = Polymarket's 60-second TWAP: average of the 60 one-second Chainlink prices just before the round starts.
+// The window ends 1-2s before the start (feed delay): SOL matches the window ending 2s early; BTC lands between 1s and 2s, so we average both.
+const PM_OFF={btc:[1,2],sol:[2]};
+function pmTwap(S,B){if(S.ptb[B]!=null)return S.ptb[B];const m={};S.pts.forEach(p=>m[p[0]]=p[1]);const r=[];
+ for(const off of PM_OFF[S.k.c]||[1,2]){let sum=0;for(let t=B-60-off;t<B-off;t++){if(m[t]==null)return null;sum+=m[t]}r.push(sum/60)}
+ if(Date.now()/1000>=B)S.ptb[B]=r.reduce((a,b)=>a+b,0)/r.length;return S.ptb[B]??null}
 const pmAsk=async tok=>{const b=await pmJ(`https://clob.polymarket.com/book?token_id=${tok}`),a=(b.asks||[]).map(o=>+o.price);return a.length?Math.min(...a):null};
 async function pmTick(){const t=Math.floor(Date.now()/1000/300)*300;
  for(const c in PM.st){const S=PM.st[c];if(S.busy)continue;S.busy=true;
@@ -183,7 +189,7 @@ function pmChart(S,ptb){const W=600,H=190,L=4,R=62,T=10,B=22,now=Date.now()/1000
  return s+"</svg>"}
 function pmDraw(S){const el=document.getElementById(`pm-${S.k.c}`);if(!el)return;const k=S.k,now=Date.now()/1000,gl=`<div class="gl" style="box-shadow:0 0 22px ${k.col}33,inset 0 0 0 1px ${k.col}44"></div>`;
  if(!S.round){el.innerHTML=gl+`<b>${k.n} Up or Down 5m</b><div class="mut" style="margin-top:6px">Waiting for the next round to open on Polymarket…</div>`;return}
- const ext=PM.D&&PM.D.priceToBeat&&PM.D.priceToBeat[k.c],left=Math.max(0,S.round+300-now),ptb=S.ptb[S.round]??(ext&&ext[S.round]!=null?+ext[S.round]:null),cur=S.cur,df=cur!=null&&ptb!=null?cur-ptb:null,cc=df==null?"#a855f7":df>=0?GREEN:RED,ct=v=>v==null?"—":Math.round(v*100)+"¢";
+ const ext=PM.D&&PM.D.priceToBeat&&PM.D.priceToBeat[k.c],left=Math.max(0,S.round+300-now),ptb=pmTwap(S,S.round)??(ext&&ext[S.round]!=null?+ext[S.round]:null),cur=S.cur,df=cur!=null&&ptb!=null?cur-ptb:null,cc=df==null?"#a855f7":df>=0?GREEN:RED,ct=v=>v==null?"—":Math.round(v*100)+"¢";
  el.innerHTML=gl+`<div class="hd"><div class="ic" style="background-image:url('${esc(S.icon)}')"></div><div class="tt"><b>${k.n} Up or Down 5m</b><small>${pmClock(S.round)}–${pmClock(S.round+300)} ${pmAP(S.round+300)} PKT</small></div>
  <div class="cd"><div><b>${String(Math.floor(left/60)).padStart(2,"0")}</b><small>MINS</small></div><div><b>${String(Math.floor(left%60)).padStart(2,"0")}</b><small>SECS</small></div></div></div>
  <div class="px" style="--cc:${cc}"><div class="ptb"><small>Price To Beat</small><b>${ptb==null?"—":pmUsd(ptb,k.dp)}</b></div><div class="sep"></div><div class="cur"><small>Current Price${df==null?"":`<span class="df" style="color:${df>=0?GREEN:RED}">${df>=0?"▲":"▼"} ${pmUsd(Math.abs(df),k.dp)}</span>`}</small><b>${cur==null?"—":pmUsd(cur,k.dp)}</b></div></div>
